@@ -95,19 +95,21 @@ FILEex * fopenEx(const char * filename, const char * mode) {
 	return NULL;
 }
 
+void getFirstAndSecondElementInLine(const string &line, string &_line, ITYPE &_freq) {
+	size_t len = line.size();
+	// Take first element and put it into _line
+	// Take second element and put it into _freq
+	vector<string> ele;
+	getElementsFromLine(line.c_str(), len, 2, ele);
+	_line = ele[0];
+	_freq = atoi(ele[1].c_str());
+}
+
 bool getFirstAndSecondElementInLine(FILEex* f, string& _line, ITYPE& _freq) {
 	string tmp;
 	if (f->read_line(tmp)) {
-		size_t len = tmp.size();
-		{
-			// Take first element and put it into _line
-			// Take second element and put it into _freq
-			vector<string> ele;
-			getElementsFromLine(tmp.c_str(), len, 2, ele);
-			_line = ele[0];
-			_freq = atoi(ele[1].c_str());
-			return true;
-		}
+		getFirstAndSecondElementInLine(tmp, _line, _freq);
+		return true;
 	}
 	return false;
 }

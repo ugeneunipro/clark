@@ -41,7 +41,9 @@ struct seqData
 {
 	std::string 	Name;
 	std::string	Accss; 
-	seqData():Name(""),Accss("")
+	size_t		offset;
+	size_t		length;
+	seqData():Name(""),Accss(""), offset(0), length(0)
 	{}
 };
 
@@ -80,6 +82,8 @@ int main(int argc, char** argv)
 	vector<seqData> seqs;	
 	map<std::string,uint32_t>::iterator it;
 	uint32_t idx = 0, i_accss = 0;
+	size_t offset = 0;
+	size_t length = 0;
 	string acc = "";
 	cerr << "Loading accession number of all files... " ;
 	while (getLineFromFile(meta_f, file))
@@ -91,12 +95,25 @@ int main(int argc, char** argv)
 			cout << file << "\tUNKNOWN" << endl;
 			continue;
 		}
-		if (getLineFromFile(fd, line))
+
+		offset = 0;
+		length = 0;
+		bool fileContainsSequence = false;
+
+		while (getLineFromFile(fd, line))
 		{
+			if (line[0] != '>') {
+				length += line.size() + 1;
+				offset += line.size() + 1;
+				continue;
+			}
+
 			ele.clear();
 			getElementsFromLine(line, seps, ele);
-			if (line[0] != '>' || ele.size() < 1)
+			if (ele.size() < 1)
 			{
+				length += line.size() + 1;
+				offset += line.size() + 1;
 				continue;
 			}
 			eles.clear();
@@ -114,8 +131,23 @@ int main(int argc, char** argv)
 			seqData s;
 			s.Name = file;
 			s.Accss = acc;
+			s.offset = offset;
+			s.length = 0;
+
+			if (!seqs.empty() && fileContainsSequence) {
+				seqs.back().length = offset - seqs.back().offset;
+			}
 			seqs.push_back(s);
+
+			offset += line.size() + 1;
+			length = line.size() + 1;
+			fileContainsSequence = true;
 		}
+
+		if (fileContainsSequence && !seqs.empty()) {
+			seqs.back().length = offset - seqs.back().offset;
+		}
+
 		fclose(fd);
 	}
 	fclose(meta_f);
@@ -168,7 +200,7 @@ int main(int argc, char** argv)
         }
 	for(size_t t = 0; t < seqs.size(); t++)
 	{
-		cout << seqs[t].Name << "\t" ;
+		cout << seqs[t].Name << ":" << seqs[t].offset << ";" << seqs[t].length << "\t" ;
 		it = accToidx.find(seqs[t].Accss);
 		cout << seqs[t].Accss << "\t" << TaxIDs[it->second] << endl;
 		if (TaxIDs[it->second]  == -1)

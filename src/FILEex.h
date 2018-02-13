@@ -22,4 +22,5 @@ inline int fclose(FILEex *& stream) { delete stream; stream = NULL; return 0; }
 inline size_t fread(void * ptr, size_t size, size_t count, FILEex * stream) { return stream->read(ptr, size, count); }
 
 inline bool getLineFromFile(FILEex* f, std::string& line) { return f->read_line(line); }
+void getFirstAndSecondElementInLine(const std::string& line, std::string& _line, ITYPE& _freq);
 bool getFirstAndSecondElementInLine(FILEex* f, std::string& _line, ITYPE& _freq);

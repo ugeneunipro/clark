@@ -286,3 +286,25 @@ bool validFile(const char* _file)
         fclose(fd);
         return true;
 }
+
+void splitTargetPath(const string& targetPath, string& _filePath, uint64_t& _offset, uint64_t& _length) {
+    _filePath = targetPath;
+    _offset = 0;
+    _length = 0;
+
+    size_t separatorIndex = targetPath.find_last_of(':');
+    if (string::npos == separatorIndex) {
+        return;
+    }
+
+    _filePath = targetPath.substr(0, separatorIndex);
+    string positionData = targetPath.substr(separatorIndex + 1);
+
+    separatorIndex = positionData.find_last_of(';');
+    if (string::npos == separatorIndex) {
+        return;
+    }
+
+    _offset = atoi(positionData.substr(0, separatorIndex).c_str());
+    _length = atoi(positionData.substr(separatorIndex + 1).c_str());
+}
