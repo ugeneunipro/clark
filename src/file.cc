@@ -287,7 +287,7 @@ bool validFile(const char* _file)
         return true;
 }
 
-void splitTargetPath(const string& targetPath, string& _filePath, uint64_t& _offset, uint64_t& _length) {
+void splitTargetPath(const string& targetPath, string& _filePath, size_t& _offset, size_t& _length) {
     _filePath = targetPath;
     _offset = 0;
     _length = 0;

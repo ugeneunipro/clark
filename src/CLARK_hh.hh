@@ -29,6 +29,7 @@
 #ifndef CLARK_HH
 #define CLARK_HH
 
+#include <assert.h>
 #include <cstring>
 #include <vector>
 #include <iostream>
@@ -3132,7 +3133,7 @@ bool CLARK<HKMERr>::TargetReader::getFirstAndSecondElementInLine(string &_line, 
 	if (!fileDescriptor) {
 		cerr << "File " << target.filePath << " is not opened" << endl;
 		assert(false);
-		return;
+		return false;
 	}
 
 	string line;
