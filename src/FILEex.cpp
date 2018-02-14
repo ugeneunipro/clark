@@ -66,14 +66,14 @@ private:
 	/*
 	if you need cache, use these 3 variables.
 	*/
-	UInt32 blockIndex = 0xFFFFFFFF; /* it can have any value before first call (if outBuffer = 0) */
-	Byte *outBuffer = 0; /* it must be 0 before first call for each new archive. */
-	size_t outBufferSize = 0;  /* it can have any value before first call (if outBuffer = 0) */
+	UInt32 blockIndex; /* it can have any value before first call (if outBuffer = 0) */
+	Byte *outBuffer; /* it must be 0 before first call for each new archive. */
+	size_t outBufferSize;  /* it can have any value before first call (if outBuffer = 0) */
 
-	size_t offset = 0;
-	size_t outSizeProcessed = 0;
+	size_t offset;
+	size_t outSizeProcessed;
 
-	Byte *outBufferProcessed = 0;
+	Byte *outBufferProcessed;
 };
 
 
@@ -114,7 +114,22 @@ bool getFirstAndSecondElementInLine(FILEex* f, string& _line, ITYPE& _freq) {
 	return false;
 }
 
-ArchivedLZMAFile::ArchivedLZMAFile() : FILEex(), entry_idx(UINT32_MAX), outBuffer(NULL), outBufferProcessed(NULL) {
+ArchivedLZMAFile::ArchivedLZMAFile()
+	: FILEex(),
+	  res(0),
+	  entry_idx(UINT32_MAX),
+	  blockIndex(0xFFFFFFFF),
+	  outBuffer(NULL),
+	  outBufferSize(0),
+	  offset(0),
+	  outSizeProcessed(0),
+	  outBufferProcessed(NULL)
+{
+	memset(&allocImp, 0, sizeof(ISzAlloc));
+	memset(&allocTempImp, 0, sizeof(ISzAlloc));
+	memset(&archiveStream, 0, sizeof(CFileInStream));
+	memset(&lookStream, 0, sizeof(CLookToRead2));
+	memset(&db, 0, sizeof(CSzArEx));
 }
 
 ArchivedLZMAFile::~ArchivedLZMAFile() { 
@@ -376,6 +391,7 @@ bool ArchivedLZMAFile::read_line(string& line) {
 	char delims[] = "\n\r";
 	char *sep = NULL;
 	Byte terminator = '\0';
+	line.clear();
 
 	while (res == SZ_OK) {
 		if (outBufferProcessed && outSizeProcessed) {
@@ -395,8 +411,8 @@ bool ArchivedLZMAFile::read_line(string& line) {
 			if (sep != NULL)
 			{
 				line.append(sep);
-				outBufferProcessed += line.length();
-				outSizeProcessed -= line.length();
+				outBufferProcessed += line.length() + 1;
+				outSizeProcessed -= line.length() + 1;
 				if (terminator != '\0') {
 					*the_end = terminator;
 					if (outSizeProcessed == 1) {
