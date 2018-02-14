@@ -337,14 +337,33 @@ static SRes Utf16_To_Char(CBuf *buf, const UInt16 *s
 #endif
 }
 
-int ArchivedLZMAFile::seek(long offset, int whence) {
-/*	if (offset || whence) {
-		fprintf(stderr, "Failed to seek 7z archive to arbitrary pos, only reset to 0 is supported!!!");
+int ArchivedLZMAFile::seek(long inFileOffset, int whence) {
+	if (whence != SEEK_SET) {
+		fprintf(stderr, "seeking 7z archive is not supported yet!!!");
 		exit(-1);
-	}*/
-	fprintf(stderr, "seeking 7z archive is not supported yet!!!");
-	exit(-1);
-	return -1;
+		return -1;
+	}
+
+	if (outBufferProcessed == outBuffer + offset + inFileOffset) {
+		return 0;
+	}
+
+	if (outBufferProcessed && outSizeProcessed) {
+		const Byte *newOutBufferProcessed = outBuffer + offset + inFileOffset;
+		const size_t delta = outBufferProcessed - newOutBufferProcessed;
+		outBufferProcessed -= delta;
+		outSizeProcessed += delta;
+	} else {
+		res = SzArEx_Extract(&db, &lookStream.vt, entry_idx,
+							 &blockIndex, &outBuffer, &outBufferSize,
+							 &offset, &outSizeProcessed,
+							 &allocImp, &allocTempImp);
+
+		outBufferProcessed = outBuffer + offset + inFileOffset;
+		outSizeProcessed -= inFileOffset;
+	}
+
+	return 0;
 }
 
 size_t ArchivedLZMAFile::read(void * ptr, size_t size, size_t count) {
