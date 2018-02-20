@@ -29,6 +29,7 @@
 #ifndef CLARK_HH
 #define CLARK_HH
 
+#include <assert.h>
 #include <cstring>
 #include <vector>
 #include <iostream>
@@ -54,10 +55,37 @@ template <typename HKMERr>
 class CLARK
 {
 	private:
-		std::vector< std::pair< std::string, std::string > >	m_targetsID;
-		std::vector< std::string >				m_labels;
-		std::vector< std::string >				m_labels_c;
-		std::vector< std::string >				m_targetsName;
+		struct Target {
+			Target() : offset(0), length(0) {}
+			std::string filePath;
+			std::string id;
+			size_t offset;
+			size_t length;
+		};
+
+		class TargetReader {
+		public:
+			TargetReader(const Target &target);
+			~TargetReader();
+
+			bool open();
+			void close();
+
+			void reset();
+
+			size_t readChunk(char *buffer);
+			bool getFirstAndSecondElementInLine(string& _line, ITYPE& _freq);
+
+		private:
+			const Target target;
+			FILEex *fileDescriptor;
+			size_t totalBytesRead;
+		};
+
+		std::vector< Target >			m_targetsID;
+		std::vector< std::string >		m_labels;
+		std::vector< std::string >		m_labels_c;
+		std::vector< std::string >		m_targetsName;
 
 		// Using spectrum files
 		std::vector< ObjectData >		m_objectsData;
@@ -876,15 +904,15 @@ size_t CLARK<HKMERr>::makeSpecificTargetSets(const vector<string>& _filesHT, con
 		EHashtable<HKMERr, lElement> commonKmersHT(m_kmerSize, m_labels, m_labels_c);
 		for(size_t t = 0 ; t < m_targetsID.size(); t++)
 		{
-			FILEex* fd = fopenEx(m_targetsID[t].first.c_str(),"r");
-			if (fd == NULL)
-			{	cerr << "Failed to open " << m_targetsID[t].first << endl;
+			TargetReader targetReader(m_targetsID[t]);
+			if (!targetReader.open())
+			{	cerr << "Failed to open " << m_targetsID[t].filePath << endl;
 				continue;
 			}
 			ILBL tgt_id;
-			commonKmersHT.getTargetID(m_targetsID[t].second, tgt_id);
+			commonKmersHT.getTargetID(m_targetsID[t].id, tgt_id);
 			char c[MAXRSIZE];
-			size_t len = fread(&c, 1, MAXRSIZE, fd), i = 0;
+			size_t len = targetReader.readChunk(c), i = 0;
 			uint64_t _km_f = 0, _km_r = 0;
 			uint8_t cpt = 0;
 			uint64_t iter = 0;
@@ -903,7 +931,7 @@ size_t CLARK<HKMERr>::makeSpecificTargetSets(const vector<string>& _filesHT, con
 							{
 								//[/////////////////////////////////////////////////////////////////////
 								if ( iter % m_iterKmers == 0  )
-								{       commonKmersHT.addElement(_km_r, m_targetsID[t].second, tgt_id, 1);}
+								{       commonKmersHT.addElement(_km_r, m_targetsID[t].id, tgt_id, 1);}
 								_km_r = 0; cpt = 0; 
 								i++;
 								iter++;
@@ -929,19 +957,19 @@ size_t CLARK<HKMERr>::makeSpecificTargetSets(const vector<string>& _filesHT, con
 								{       i++;}
 								if (i < len)
 								{   break;}
-								len = fread(&c, 1, MAXRSIZE, fd );
+								len = targetReader.readChunk(c);
 								i = 0;
 							}
 							i++;
 							continue;
 						}
-						cerr << m_targetsID[t].first << ": " ;
+						cerr << m_targetsID[t].filePath << ": " ;
 						cerr << "Failed to process sequence -- wrong character found [ASCII]: " << (size_t) c << endl;
 					}
-					len = fread(&c, 1, MAXRSIZE, fd );
+					len = targetReader.readChunk(c);
 					i = 0;
 				}
-				fclose(fd);
+				targetReader.close();
 				cerr << "\r Progress report: (" <<t+1<< "/"<<m_targetsID.size()<<")    ";
 				continue;
 			}
@@ -953,7 +981,7 @@ size_t CLARK<HKMERr>::makeSpecificTargetSets(const vector<string>& _filesHT, con
 					{       i++;}
 					if (i < len)
 					{   break;}
-					len = fread(&c, 1, MAXRSIZE, fd );
+					len = targetReader.readChunk(c);
 					i = 0;
 				}
 				i++;
@@ -970,7 +998,7 @@ size_t CLARK<HKMERr>::makeSpecificTargetSets(const vector<string>& _filesHT, con
 							{
 								//[/////////////////////////////////////////////////////////////////////
 								if ( iter % m_iterKmers == 0 )
-								{       commonKmersHT.addElement(_km_r, m_targetsID[t].second, tgt_id, 1);}
+								{       commonKmersHT.addElement(_km_r, m_targetsID[t].id, tgt_id, 1);}
 								_km_r = 0; cpt = 0; 
 								i++;
 								iter++;
@@ -992,7 +1020,7 @@ size_t CLARK<HKMERr>::makeSpecificTargetSets(const vector<string>& _filesHT, con
 								{       i++;}
 								if (i < len)
 								{   break;}
-								len = fread(&c, 1, MAXRSIZE, fd );
+								len = targetReader.readChunk(c);
 								i = 0;
 							}
 							i++;
@@ -1003,7 +1031,7 @@ size_t CLARK<HKMERr>::makeSpecificTargetSets(const vector<string>& _filesHT, con
 								{       i++;}
 								if (i < len)
 								{   break;}
-								len = fread(&c, 1, MAXRSIZE, fd );
+								len = targetReader.readChunk(c);
 								i = 0;
 							}
 							i++;
@@ -1014,7 +1042,7 @@ size_t CLARK<HKMERr>::makeSpecificTargetSets(const vector<string>& _filesHT, con
 								{       i++;}
 								if (i < len)
 								{   break;}
-								len = fread(&c, 1, MAXRSIZE, fd );
+								len = targetReader.readChunk(c);
 								i = 0;
 							}
 							i++;
@@ -1027,31 +1055,31 @@ size_t CLARK<HKMERr>::makeSpecificTargetSets(const vector<string>& _filesHT, con
 							i++;
 							continue;
 						}
-						cerr << m_targetsID[t].first << ": " ;
+						cerr << m_targetsID[t].filePath << ": " ;
 						cerr << "Failed to process sequence -- wrong character found [ASCII]: " << (size_t) c << endl;
 					}
-					len = fread(&c, 1, MAXRSIZE, fd );
+					len = targetReader.readChunk(c);
 					i = 0;
 				}
-				fclose(fd);
+				targetReader.close();
 				cerr << "\r Progress report: (" <<t+1<< "/"<<m_targetsID.size()<<")              ";
 				continue;
 			}
-			fseek(fd, 0, 0);
+			targetReader.reset();
 			string s_kmer = "";
 			ITYPE val = 0;
 			uint8_t counter = 0;
-			while (getFirstAndSecondElementInLine(fd, s_kmer, val))
+			while (targetReader.getFirstAndSecondElementInLine(s_kmer, val))
 			{
 				if (s_kmer.size() >= m_kmerSize && counter % m_iterKmers == 0 && val > m_minCountTarget)
 				{
-					commonKmersHT.addElement(s_kmer, m_targetsID[t].second, (size_t) val);
+					commonKmersHT.addElement(s_kmer, m_targetsID[t].id, (size_t) val);
 					counter = 0;
 				}
 				counter++;
 				continue;
 			}
-			fclose(fd);
+			targetReader.close();
 			cerr << "\r Progress report: (" <<t+1<< "/"<<m_targetsID.size()<<")              ";
 		}
 		cerr << nt << " nt read in total." << endl;
@@ -1076,17 +1104,17 @@ size_t CLARK<HKMERr>::makeSpecificTargetSets(const vector<string>& _filesHT, con
 		EHashtable<HKMERr, lElement> commonKmersHT(m_kmerSize, m_labels, m_labels_c);
 		for(size_t t = 0 ; t < m_targetsID.size(); t++)
 		{
-			FILEex* fd = fopenEx(m_targetsID[t].first.c_str(),"r");
-			if (fd == NULL)
+			TargetReader targetReader(m_targetsID[t]);
+			if (!targetReader.open())
 			{
-				cerr << "Failed to open " << m_targetsID[t].first << endl;
+				cerr << "Failed to open " << m_targetsID[t].filePath << endl;
 			}
 			else
 			{
 				ILBL tgt_id;
-				commonKmersHT.getTargetID(m_targetsID[t].second, tgt_id);
+				commonKmersHT.getTargetID(m_targetsID[t].id, tgt_id);
 				char c[MAXRSIZE];
-				size_t len = fread(&c, 1, MAXRSIZE, fd), i = 0;
+				size_t len = targetReader.readChunk(c), i = 0;
 				uint64_t _km_f = 0, _km_r = 0;
 				bool _isfull = false;
 				uint8_t cpt = 0;		
@@ -1105,7 +1133,7 @@ size_t CLARK<HKMERr>::makeSpecificTargetSets(const vector<string>& _filesHT, con
 									_km_f += m_powerTable[cpt][m_table[c[i]]];
 
 									/////////////////////////////////////////////////////////////////////
-									commonKmersHT.addElement(_km_f, m_targetsID[t].second, tgt_id, 1);
+									commonKmersHT.addElement(_km_f, m_targetsID[t].id, tgt_id, 1);
 									///////////////////////////////////////////////////////////////////////
 									i++;
 									continue;
@@ -1116,7 +1144,7 @@ size_t CLARK<HKMERr>::makeSpecificTargetSets(const vector<string>& _filesHT, con
 								{       
 									_isfull = true;
 									//[/////////////////////////////////////////////////////////////////////
-									commonKmersHT.addElement(_km_r, m_targetsID[t].second, tgt_id, 1);
+									commonKmersHT.addElement(_km_r, m_targetsID[t].id, tgt_id, 1);
 									//]//////////////////////////////////////////////////////////////////////
 									_km_f = _km_r;
 									// The following 6 lines come from Jellyfish source code
@@ -1145,19 +1173,19 @@ size_t CLARK<HKMERr>::makeSpecificTargetSets(const vector<string>& _filesHT, con
 								{
 									while(i < len && c[i] != '\n')  {	i++;}
 									if (i < len)		{   break;}
-									len = fread(&c, 1, MAXRSIZE, fd );
+									len = targetReader.readChunk(c);
 									i = 0;
 								}
 								i++;   
 								continue;
 							}
-							cerr << m_targetsID[t].first << ": " ;
+							cerr << m_targetsID[t].filePath << ": " ;
 							cerr << "Failed to process sequence -- wrong character found [ASCII]: " << (size_t) c << endl;
 						}
-						len = fread(&c, 1, MAXRSIZE, fd );
+						len = targetReader.readChunk(c);
 						i = 0;
 					}
-					fclose(fd);
+					targetReader.close();
 					cerr << "\r Progress report: (" <<t+1<< "/"<<m_targetsID.size()<<")    ";
 					continue;	
 				}
@@ -1168,7 +1196,7 @@ size_t CLARK<HKMERr>::makeSpecificTargetSets(const vector<string>& _filesHT, con
 					{
 						while(i < len && c[i] != '\n')            {	i++;}
 						if (i < len)      {   break;}
-						len = fread(&c, 1, MAXRSIZE, fd );
+						len = targetReader.readChunk(c);
 						i = 0;
 					}
 					i++;
@@ -1184,7 +1212,7 @@ size_t CLARK<HKMERr>::makeSpecificTargetSets(const vector<string>& _filesHT, con
 									_km_f >>= 2; 
 									_km_f += m_powerTable[cpt][m_table[c[i]]];
 									/////////////////////////////////////////////////////////////////////
-									commonKmersHT.addElement(_km_f, m_targetsID[t].second,  tgt_id, 1);
+									commonKmersHT.addElement(_km_f, m_targetsID[t].id,  tgt_id, 1);
 									///////////////////////////////////////////////////////////////////////
 									i++;    
 									continue;
@@ -1194,7 +1222,7 @@ size_t CLARK<HKMERr>::makeSpecificTargetSets(const vector<string>& _filesHT, con
 								if ( cpt  == m_kmerSize - 1)
 								{       _isfull = true;
 									//[/////////////////////////////////////////////////////////////////////
-									commonKmersHT.addElement(_km_r, m_targetsID[t].second, tgt_id, 1);
+									commonKmersHT.addElement(_km_r, m_targetsID[t].id, tgt_id, 1);
 									//]//////////////////////////////////////////////////////////////////////
 									_km_f = _km_r;
 									// The following 6 lines come from Jellyfish source code
@@ -1220,7 +1248,7 @@ size_t CLARK<HKMERr>::makeSpecificTargetSets(const vector<string>& _filesHT, con
 								{
 									while(i < len && c[i] != '\n')		{	i++;}
 									if (i < len)   		{   break;}
-									len = fread(&c, 1, MAXRSIZE, fd );
+									len = targetReader.readChunk(c);
 									i = 0;
 								}
 								i++;
@@ -1229,7 +1257,7 @@ size_t CLARK<HKMERr>::makeSpecificTargetSets(const vector<string>& _filesHT, con
 								{
 									while(i < len && c[i] != '\n')         {	i++;}
 									if (i < len)         {   break;}
-									len = fread(&c, 1, MAXRSIZE, fd );
+									len = targetReader.readChunk(c);
 									i = 0;
 								}
 								i++;
@@ -1238,7 +1266,7 @@ size_t CLARK<HKMERr>::makeSpecificTargetSets(const vector<string>& _filesHT, con
 								{
 									while(i < len && c[i] != '\n')        {		i++;}
 									if (i < len){   break;}
-									len = fread(&c, 1, MAXRSIZE, fd );
+									len = targetReader.readChunk(c);
 									i = 0;
 								}
 								i++;    
@@ -1250,24 +1278,24 @@ size_t CLARK<HKMERr>::makeSpecificTargetSets(const vector<string>& _filesHT, con
 								i++;    
 								continue;
 							}
-							cerr << m_targetsID[t].first << ": " ;
+							cerr << m_targetsID[t].filePath << ": " ;
 							cerr << "Failed to process sequence -- wrong character found [ASCII]: " << (size_t) c << endl;
 						}
-						len = fread(&c, 1, MAXRSIZE, fd );
+						len = targetReader.readChunk(c);
 						i = 0;  
 					}
-					fclose(fd);
+					targetReader.close();
 					cerr << "\r Progress report: (" <<t+1<< "/"<<m_targetsID.size()<<")              ";
 					continue;
 				}
-				fseek(fd, 0, 0);
+				targetReader.reset();
 				string s_kmer = "";
 				ITYPE val;
-				while (getFirstAndSecondElementInLine(fd, s_kmer, val))
+				while (targetReader.getFirstAndSecondElementInLine(s_kmer, val))
 				{	if (s_kmer.size() >= m_kmerSize && val > m_minCountTarget)
-					{	commonKmersHT.addElement(s_kmer, m_targetsID[t].second, (size_t) val);}
+					{	commonKmersHT.addElement(s_kmer, m_targetsID[t].id, (size_t) val);}
 				}
-				fclose(fd);
+				targetReader.close();
 				cerr << "\r Progress report: (" <<t+1<< "/"<<m_targetsID.size()<<")              ";
 			}
 		}
@@ -1291,17 +1319,17 @@ size_t CLARK<HKMERr>::makeSpecificTargetSets(const vector<string>& _filesHT, con
 	EHashtable<HKMERr, Element> commonKmersHT(m_kmerSize, m_labels, m_labels_c);
 	for(size_t t = 0 ; t < m_targetsID.size(); t++)
 	{
-		FILEex* fd = fopenEx(m_targetsID[t].first.c_str(),"r");
-		if (fd == NULL)
+		TargetReader targetReader(m_targetsID[t]);
+		if (!targetReader.open())
 		{
-			cerr << "Failed to open " << m_targetsID[t].first << endl;
+			cerr << "Failed to open " << m_targetsID[t].filePath << endl;
 		}
 		else
 		{
 			ILBL tgt_id;
-			commonKmersHT.getTargetID(m_targetsID[t].second, tgt_id);
+			commonKmersHT.getTargetID(m_targetsID[t].id, tgt_id);
 			char c[MAXRSIZE];
-			size_t len = fread(&c, 1, MAXRSIZE, fd), i = 0;
+			size_t len = targetReader.readChunk(c), i = 0;
 			uint64_t _km_f = 0, _km_r = 0;
 			bool _isfull = false;
 			uint8_t cpt = 0;
@@ -1320,7 +1348,7 @@ size_t CLARK<HKMERr>::makeSpecificTargetSets(const vector<string>& _filesHT, con
 								_km_f += m_powerTable[cpt][m_table[c[i]]];
 
 								/////////////////////////////////////////////////////////////////////
-								commonKmersHT.addElement(_km_f, m_targetsID[t].second, tgt_id, 1);
+								commonKmersHT.addElement(_km_f, m_targetsID[t].id, tgt_id, 1);
 								///////////////////////////////////////////////////////////////////////
 								i++;
 								continue;
@@ -1330,7 +1358,7 @@ size_t CLARK<HKMERr>::makeSpecificTargetSets(const vector<string>& _filesHT, con
 							if (cpt == m_kmerSize - 1)
 							{       _isfull = true;
 								//[/////////////////////////////////////////////////////////////////////
-								commonKmersHT.addElement(_km_r, m_targetsID[t].second, tgt_id, 1);
+								commonKmersHT.addElement(_km_r, m_targetsID[t].id, tgt_id, 1);
 								//]//////////////////////////////////////////////////////////////////////
 								_km_f = _km_r;
 								// The following 6 lines come from Jellyfish source code
@@ -1359,19 +1387,19 @@ size_t CLARK<HKMERr>::makeSpecificTargetSets(const vector<string>& _filesHT, con
 							{
 								while(i < len && c[i] != '\n')  {       i++;}
 								if (i < len)            {   break;}
-								len = fread(&c, 1, MAXRSIZE, fd );
+								len = targetReader.readChunk(c);
 								i = 0;
 							}
 							i++;
 							continue;
 						}
-						cerr << m_targetsID[t].first << ": " ;
+						cerr << m_targetsID[t].filePath << ": " ;
 						cerr << "Failed to process sequence -- wrong character found [ASCII]: " << (size_t) c << endl;
 					}
-					len = fread(&c, 1, MAXRSIZE, fd );
+					len = targetReader.readChunk(c);
 					i = 0;
 				}
-				fclose(fd);
+				targetReader.close();
 				cerr << "\r Progress report: (" <<t+1<< "/"<<m_targetsID.size()<<")    ";
 				continue;
 			}
@@ -1381,7 +1409,7 @@ size_t CLARK<HKMERr>::makeSpecificTargetSets(const vector<string>& _filesHT, con
 				{
 					while(i < len && c[i] != '\n')            {       i++;}
 					if (i < len)      {   break;}
-					len = fread(&c, 1, MAXRSIZE, fd );
+					len = targetReader.readChunk(c);
 					i = 0;
 				}
 				i++;
@@ -1398,7 +1426,7 @@ size_t CLARK<HKMERr>::makeSpecificTargetSets(const vector<string>& _filesHT, con
 								_km_f += m_powerTable[cpt][m_table[c[i]]];
 
 								/////////////////////////////////////////////////////////////////////
-								commonKmersHT.addElement(_km_f, m_targetsID[t].second, tgt_id, 1);
+								commonKmersHT.addElement(_km_f, m_targetsID[t].id, tgt_id, 1);
 								///////////////////////////////////////////////////////////////////////
 								i++;
 								continue;
@@ -1408,7 +1436,7 @@ size_t CLARK<HKMERr>::makeSpecificTargetSets(const vector<string>& _filesHT, con
 							if (cpt  == m_kmerSize - 1)
 							{       _isfull = true;
 								//[/////////////////////////////////////////////////////////////////////
-								commonKmersHT.addElement(_km_r, m_targetsID[t].second, tgt_id, 1);
+								commonKmersHT.addElement(_km_r, m_targetsID[t].id, tgt_id, 1);
 								//]//////////////////////////////////////////////////////////////////////
 								_km_f = _km_r;
 								// The following 6 lines come from Jellyfish source code
@@ -1435,7 +1463,7 @@ size_t CLARK<HKMERr>::makeSpecificTargetSets(const vector<string>& _filesHT, con
 							{
 								while(i < len && c[i] != '\n')          {       i++;}
 								if (i < len)            {   break;}
-								len = fread(&c, 1, MAXRSIZE, fd );
+								len = targetReader.readChunk(c);
 								i = 0;
 							}
 							i++;
@@ -1444,7 +1472,7 @@ size_t CLARK<HKMERr>::makeSpecificTargetSets(const vector<string>& _filesHT, con
 							{
 								while(i < len && c[i] != '\n')         {       i++;}
 								if (i < len)         {   break;}
-								len = fread(&c, 1, MAXRSIZE, fd );
+								len = targetReader.readChunk(c);
 								i = 0;
 							}
 							i++;
@@ -1453,7 +1481,7 @@ size_t CLARK<HKMERr>::makeSpecificTargetSets(const vector<string>& _filesHT, con
 							{
 								while(i < len && c[i] != '\n')        {       i++;}
 								if (i < len){   break;}
-								len = fread(&c, 1, MAXRSIZE, fd );
+								len = targetReader.readChunk(c);
 								i = 0;
 							}
 							i++;
@@ -1464,24 +1492,24 @@ size_t CLARK<HKMERr>::makeSpecificTargetSets(const vector<string>& _filesHT, con
 							i++;
 							continue;
 						}
-						cerr << m_targetsID[t].first << ": " ;
+						cerr << m_targetsID[t].filePath << ": " ;
 						cerr << "Failed to process sequence -- wrong character found [ASCII]: " << (size_t) c << endl;
 					}
-					len = fread(&c, 1, MAXRSIZE, fd );
+					len = targetReader.readChunk(c);
 					i = 0;
 				}
-				fclose(fd);
+				targetReader.close();
 				cerr << "\r Progress report: (" <<t+1<< "/"<<m_targetsID.size()<<")              ";
 				continue;
 			}
-			fseek(fd, 0, 0);
+			targetReader.reset();
 			string s_kmer = "";
 			ITYPE val = 0;
-			while (getFirstAndSecondElementInLine(fd, s_kmer, val))
+			while (targetReader.getFirstAndSecondElementInLine(s_kmer, val))
 			{       if (s_kmer.size() >= m_kmerSize &&  val > m_minCountTarget)
-				{       commonKmersHT.addElement(s_kmer, m_targetsID[t].second, (size_t) val);}
+				{       commonKmersHT.addElement(s_kmer, m_targetsID[t].id, (size_t) val);}
 			}
-			fclose(fd);
+			targetReader.close();
 			cerr << "\r Progress report: (" <<t+1<< "/"<<m_targetsID.size()<<")              ";
 		}
 	}
@@ -2740,13 +2768,13 @@ bool CLARK<HKMERr>::getTargetsData(const char* _filesName, vector<string>& _file
 	{
 		ele.clear();
 		getElementsFromLine(subfile, sep, ele);
-		pair< string, string > target;
+		Target target;
 
-		target.first = ele[0];
+		splitTargetPath(ele[0], target.filePath, target.offset, target.length);
 
 		if (ele.size() > 1)
 		{
-			target.second = ele[1];
+			target.id = ele[1];
 			if (ele[1].size() > 25)
 			{
 				std::cerr <<  "Please choose a shorter target identifier (i.e., less than 25 characters) for "<< ele[1] << " in line: " << subfile <<std::endl;
@@ -3035,4 +3063,85 @@ void CLARK<HKMERr>::printExtendedSFResults(const char* _fileResult) const
 	}
 	fclose(fout);
 	return;
+}
+
+template<typename HKMERr>
+CLARK<HKMERr>::TargetReader::TargetReader(const CLARK<HKMERr>::Target &target)
+	: target(target),
+	fileDescriptor(NULL),
+	totalBytesRead(0)
+{
+
+}
+
+template<typename HKMERr>
+CLARK<HKMERr>::TargetReader::~TargetReader() {
+	close();
+}
+
+template<typename HKMERr>
+bool CLARK<HKMERr>::TargetReader::open() {
+	if (fileDescriptor) {
+		cerr << "File " << target.filePath << " is already opened" << endl;
+		assert(false);
+		return false;
+	}
+
+	fileDescriptor = fopenEx(target.filePath.c_str(), "r");
+	if (NULL == fileDescriptor) {
+		return false;
+	}
+
+	reset();
+	return true;
+}
+
+template<typename HKMERr>
+void CLARK<HKMERr>::TargetReader::close() {
+	fclose(fileDescriptor);
+	fileDescriptor = NULL;
+}
+
+template<typename HKMERr>
+size_t CLARK<HKMERr>::TargetReader::readChunk(char *buffer) {
+	if (!fileDescriptor) {
+		cerr << "File " << target.filePath << " is not opened" << endl;
+		assert(false);
+		return 0;
+	}
+
+	size_t sizeToRead = min<size_t>(MAXRSIZE, 0 != target.length ? target.length - totalBytesRead : MAXRSIZE);
+	size_t bytesRead = fread(buffer, 1, sizeToRead, fileDescriptor);
+	totalBytesRead += bytesRead;
+	return bytesRead;
+}
+
+template<typename HKMERr>
+void CLARK<HKMERr>::TargetReader::reset() {
+	if (!fileDescriptor) {
+		cerr << "File " << target.filePath << " is not opened" << endl;
+		assert(false);
+		return;
+	}
+
+	fileDescriptor->seek(target.offset, SEEK_SET);
+	totalBytesRead = 0;
+}
+
+template<typename HKMERr>
+bool CLARK<HKMERr>::TargetReader::getFirstAndSecondElementInLine(string &_line, ITYPE &_freq) {
+	if (!fileDescriptor) {
+		cerr << "File " << target.filePath << " is not opened" << endl;
+		assert(false);
+		return false;
+	}
+
+	string line;
+	if (getLineFromFile(fileDescriptor, line)) {
+		::getFirstAndSecondElementInLine(line, _line, _freq);
+		totalBytesRead += line.size() + 1;
+		return true;
+	}
+
+	return false;
 }

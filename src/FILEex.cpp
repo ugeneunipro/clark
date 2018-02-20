@@ -66,14 +66,14 @@ private:
 	/*
 	if you need cache, use these 3 variables.
 	*/
-	UInt32 blockIndex = 0xFFFFFFFF; /* it can have any value before first call (if outBuffer = 0) */
-	Byte *outBuffer = 0; /* it must be 0 before first call for each new archive. */
-	size_t outBufferSize = 0;  /* it can have any value before first call (if outBuffer = 0) */
+	UInt32 blockIndex; /* it can have any value before first call (if outBuffer = 0) */
+	Byte *outBuffer; /* it must be 0 before first call for each new archive. */
+	size_t outBufferSize;  /* it can have any value before first call (if outBuffer = 0) */
 
-	size_t offset = 0;
-	size_t outSizeProcessed = 0;
+	size_t offset;
+	size_t outSizeProcessed;
 
-	Byte *outBufferProcessed = 0;
+	Byte *outBufferProcessed;
 };
 
 
@@ -95,24 +95,41 @@ FILEex * fopenEx(const char * filename, const char * mode) {
 	return NULL;
 }
 
+void getFirstAndSecondElementInLine(const string &line, string &_line, ITYPE &_freq) {
+	size_t len = line.size();
+	// Take first element and put it into _line
+	// Take second element and put it into _freq
+	vector<string> ele;
+	getElementsFromLine(line.c_str(), len, 2, ele);
+	_line = ele[0];
+	_freq = atoi(ele[1].c_str());
+}
+
 bool getFirstAndSecondElementInLine(FILEex* f, string& _line, ITYPE& _freq) {
 	string tmp;
 	if (f->read_line(tmp)) {
-		size_t len = tmp.size();
-		{
-			// Take first element and put it into _line
-			// Take second element and put it into _freq
-			vector<string> ele;
-			getElementsFromLine(tmp.c_str(), len, 2, ele);
-			_line = ele[0];
-			_freq = atoi(ele[1].c_str());
-			return true;
-		}
+		getFirstAndSecondElementInLine(tmp, _line, _freq);
+		return true;
 	}
 	return false;
 }
 
-ArchivedLZMAFile::ArchivedLZMAFile() : FILEex(), entry_idx(UINT32_MAX), outBuffer(NULL), outBufferProcessed(NULL) {
+ArchivedLZMAFile::ArchivedLZMAFile()
+	: FILEex(),
+	  res(0),
+	  entry_idx(UINT32_MAX),
+	  blockIndex(0xFFFFFFFF),
+	  outBuffer(NULL),
+	  outBufferSize(0),
+	  offset(0),
+	  outSizeProcessed(0),
+	  outBufferProcessed(NULL)
+{
+	memset(&allocImp, 0, sizeof(ISzAlloc));
+	memset(&allocTempImp, 0, sizeof(ISzAlloc));
+	memset(&archiveStream, 0, sizeof(CFileInStream));
+	memset(&lookStream, 0, sizeof(CLookToRead2));
+	memset(&db, 0, sizeof(CSzArEx));
 }
 
 ArchivedLZMAFile::~ArchivedLZMAFile() { 
@@ -320,14 +337,33 @@ static SRes Utf16_To_Char(CBuf *buf, const UInt16 *s
 #endif
 }
 
-int ArchivedLZMAFile::seek(long offset, int whence) {
-/*	if (offset || whence) {
-		fprintf(stderr, "Failed to seek 7z archive to arbitrary pos, only reset to 0 is supported!!!");
+int ArchivedLZMAFile::seek(long inFileOffset, int whence) {
+	if (whence != SEEK_SET) {
+		fprintf(stderr, "seeking 7z archive is not supported yet!!!");
 		exit(-1);
-	}*/
-	fprintf(stderr, "seeking 7z archive is not supported yet!!!");
-	exit(-1);
-	return -1;
+		return -1;
+	}
+
+	if (outBufferProcessed == outBuffer + offset + inFileOffset) {
+		return 0;
+	}
+
+	if (outBufferProcessed && outSizeProcessed) {
+		const Byte *newOutBufferProcessed = outBuffer + offset + inFileOffset;
+		const size_t delta = outBufferProcessed - newOutBufferProcessed;
+		outBufferProcessed -= delta;
+		outSizeProcessed += delta;
+	} else {
+		res = SzArEx_Extract(&db, &lookStream.vt, entry_idx,
+							 &blockIndex, &outBuffer, &outBufferSize,
+							 &offset, &outSizeProcessed,
+							 &allocImp, &allocTempImp);
+
+		outBufferProcessed = outBuffer + offset + inFileOffset;
+		outSizeProcessed -= inFileOffset;
+	}
+
+	return 0;
 }
 
 size_t ArchivedLZMAFile::read(void * ptr, size_t size, size_t count) {
@@ -374,6 +410,7 @@ bool ArchivedLZMAFile::read_line(string& line) {
 	char delims[] = "\n\r";
 	char *sep = NULL;
 	Byte terminator = '\0';
+	line.clear();
 
 	while (res == SZ_OK) {
 		if (outBufferProcessed && outSizeProcessed) {
@@ -393,8 +430,8 @@ bool ArchivedLZMAFile::read_line(string& line) {
 			if (sep != NULL)
 			{
 				line.append(sep);
-				outBufferProcessed += line.length();
-				outSizeProcessed -= line.length();
+				outBufferProcessed += line.length() + 1;
+				outSizeProcessed -= line.length() + 1;
 				if (terminator != '\0') {
 					*the_end = terminator;
 					if (outSizeProcessed == 1) {

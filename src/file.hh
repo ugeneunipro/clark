@@ -55,4 +55,6 @@ void deleteFile(const char* _filename);
 
 bool validFile(const char* _file);
 
+void splitTargetPath(const std::string& targetPath, std::string& _filePath, size_t &_offset, size_t &_length);
+
 #endif //FILE_HH
