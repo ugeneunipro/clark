@@ -6,6 +6,8 @@
 #include <iostream>
 #include <vector>
 
+#include <zlib.h>
+
 #include "file.hh"
 
 #include "../7zC/CpuArch.h"
@@ -15,6 +17,10 @@
 #include "../7zC/7zCrc.h"
 #include "../7zC/7zFile.h"
 #include "../7zC/7zVersion.h"
+
+
+#include "RingBuffer.h"
+
 
 using namespace std;
 
@@ -35,6 +41,34 @@ public:
 private:
 	FILE *file;
 };
+
+
+class GzipUtil;
+
+class GZIPFile : public FILEex
+{
+public:
+	GZIPFile();
+	~GZIPFile();
+	bool open(const char * filename, const char * mode);
+	int seek(long offset, int whence);
+	size_t read(void * ptr, size_t size, size_t count);
+	bool read_line(string& line);
+
+private:
+
+	void reset();
+
+	FILE *io; //IOAdapter* io;
+	GzipUtil* z;
+	RingBuffer* buf; // seek buffer
+	int rewinded; // how much should read from seek buffer
+
+};
+
+const int BUFLEN = 32768;
+const char* GZIP_URL = "gz:";
+const char* GZIP_SUFFIX = ".gz";
 
 /**
 Based on 7z ANSI-C Decoder from http://www.7-zip.org/sdk.html 
@@ -79,16 +113,42 @@ private:
 
 const char* LZMA_URL = "7z:";
 
+static pair<string, FILEex *> cache;
+
+int fclose(FILEex *& stream) { 
+//	delete stream; 
+	stream = NULL; 
+	return 0; 
+}
+
 FILEex * fopenEx(const char * filename, const char * mode) {
-	FILEex *f = NULL;
-	if (strncmp(filename, LZMA_URL, strlen(LZMA_URL)) == 0) {
+	FILEex *f = cache.second;
+	if (strcmp(cache.first.c_str(), filename) == 0) {
+		return f;
+	}
+	else {
+		cache.first.clear();
+		cache.second = NULL;
+		delete f;
+		f = NULL;
+	}
+		
+	if (strncmp(filename, GZIP_URL, strlen(GZIP_URL)) == 0) {
+		filename = filename + strlen(GZIP_URL);
+		f = new GZIPFile();
+	} 
+	else if (strncmp(filename, LZMA_URL, strlen(LZMA_URL)) == 0) {
 		filename = filename + strlen(LZMA_URL);
 		f = new ArchivedLZMAFile();
-	}
+	} 
+	else if (strcmp(filename + strlen(filename) - strlen(GZIP_SUFFIX), GZIP_SUFFIX) == 0) {
+		f = new GZIPFile();
+	} 
 	else {
 		f = new PlainFile();
 	}
 	if (f && f->open(filename, mode)) {
+		cache = make_pair(filename, f);
 		return f;
 	}
 	delete f;
@@ -113,6 +173,243 @@ bool getFirstAndSecondElementInLine(FILEex* f, string& _line, ITYPE& _freq) {
 	}
 	return false;
 }
+
+typedef int64_t qint64;
+
+class GzipUtil {
+public:
+	GzipUtil(FILE* io);
+	~GzipUtil();
+	qint64 uncompress(char* outBuff, qint64 outSize);
+	qint64 compress(const char* inBuff, qint64 inSize, bool finish = false);
+	bool isCompressing() const { return doCompression; }
+	qint64 getPos() const;
+private:
+	static const int CHUNK = 16384;
+	z_stream strm;
+	char buf[CHUNK];
+	FILE* io;
+	bool doCompression;
+	qint64 curPos; // position of uncompressed file
+};
+
+GzipUtil::GzipUtil(FILE* io) : io(io), curPos(0)
+{
+	//#ifdef _DEBUG
+	memset(buf, 0xDD, CHUNK);
+	//#endif
+
+	/* allocate inflate state */
+	strm.zalloc = Z_NULL;
+	strm.zfree = Z_NULL;
+	strm.opaque = Z_NULL;
+	strm.avail_in = 0;
+	strm.next_in = Z_NULL;
+
+	int ret = 
+		/* enable zlib and gzip decoding with automatic header detection */
+		inflateInit2(&strm, 32 + 15);
+	assert(ret == Z_OK);
+}
+
+GzipUtil::~GzipUtil()
+{
+		inflateEnd(&strm);
+}
+
+qint64 GzipUtil::getPos() const {
+	return curPos;
+}
+
+qint64 GzipUtil::uncompress(char* outBuff, qint64 outSize)
+{
+	/* Based on gun.c (example from zlib, copyrighted (C) 2003, 2005 Mark Adler) */
+	strm.avail_out = outSize;
+	strm.next_out = (Bytef*)outBuff;
+	do {
+		/* run inflate() on input until output buffer is full */
+		if (strm.avail_in == 0) {
+			// need more input
+			strm.avail_in = fread(buf, 1, CHUNK, io);
+			strm.next_in = (Bytef*)buf;
+		}
+		if (strm.avail_in == uint32_t(-1)) {
+			// TODO log error
+			return -1;
+		}
+		if (strm.avail_in == 0)
+			break;
+
+		int ret = inflate(&strm, Z_SYNC_FLUSH);
+		assert(ret != Z_STREAM_ERROR);  /* state not clobbered */
+		switch (ret) {
+		case Z_NEED_DICT:
+		case Z_DATA_ERROR:
+		case Z_MEM_ERROR:
+			return -1;
+		case Z_STREAM_END:
+		{
+			qint64 readBytes = 0;
+			readBytes = outSize - strm.avail_out;
+			inflateReset(&strm);
+			inflateInit2(&strm, 32 + 15);
+
+			return readBytes;
+		}
+		case Z_BUF_ERROR:
+		case Z_FINISH:
+			curPos += outSize - strm.avail_out;
+			return outSize - strm.avail_out;
+		}
+		if (strm.avail_out != 0 && strm.avail_in != 0) {
+			assert(0);
+			break;
+		}
+	} while (strm.avail_out != 0);
+	curPos += outSize - strm.avail_out;
+
+	return outSize - strm.avail_out;
+}
+
+GZIPFile::GZIPFile() 
+	: FILEex(), io(NULL), z(NULL), buf(NULL), rewinded(0) {}
+
+GZIPFile::~GZIPFile() {
+	delete z;
+	z = NULL;
+	if (buf) {
+		delete[] buf->rawData();
+		delete buf;
+		buf = NULL;
+	}
+	if (io) fclose(io);
+	io = NULL;
+}
+
+bool GZIPFile::open(const char * filename, const char * mode) {
+	if (strcmp(mode, "r") == 0) {
+		io = fopen(filename, mode);
+		if (io) {
+			z = new GzipUtil(io);
+			buf = new RingBuffer(new char[BUFLEN], BUFLEN);
+			return true;
+		}
+		perror(NULL);
+		return false;
+	}
+	else {
+		cerr << "Unsupported file open mode for gzip archive: " << mode << "\n";
+		return false;
+	}
+}
+
+void GZIPFile::reset() {
+	char *bf = buf->rawData();
+	delete buf;
+	delete z;
+	z = new GzipUtil(io);
+	buf = new RingBuffer(bf, BUFLEN);
+	rewinded = 0;
+	fseek(io, 0, SEEK_SET);
+}
+
+int GZIPFile::seek(long inFileOffset, int whence) {
+	if (whence == SEEK_SET) {
+		long relative = inFileOffset - z->getPos() - rewinded;
+		if (relative <= 0) {
+			if (-relative <= buf->length()) {
+				rewinded = -relative;
+				return true;
+			}
+			// else fallback via reset
+		}
+		return seek(inFileOffset - z->getPos(), SEEK_CUR);
+	}
+	else if (whence == SEEK_CUR) {
+		qint64 nBytes = inFileOffset; 
+		nBytes -= rewinded;
+		if (nBytes <= 0) {
+			if (-nBytes <= buf->length()) {
+				rewinded = -nBytes;
+				return true;
+			}
+			return false;
+		}
+		rewinded = 0;
+		char* tmp = new char[nBytes];
+		qint64 skipped = read(tmp, 1, nBytes);
+		delete[] tmp;
+
+		return skipped == nBytes;
+	}
+	else {
+		fprintf(stderr, "SEEK_END in gzip archive is not supported yet!!!");
+		exit(-1);
+		return -1;
+	}
+
+	reset();
+	return seek(inFileOffset, whence);
+}
+
+size_t GZIPFile::read(void * ptr, size_t size, size_t count) {
+	char* data = (char*)ptr;
+	size = count * size;
+	// first use data put back to buffer if any
+	int cached = 0;
+	if (rewinded != 0) {
+		assert(rewinded > 0 && rewinded <= buf->length());
+		cached = buf->read(data, size, buf->length() - rewinded);
+		if (cached == size) {
+			rewinded -= size;
+			return size;
+		}
+		assert(cached < size);
+		rewinded = 0;
+	}
+	size = z->uncompress(data + cached, size - cached);
+	if (size == -1) {
+		return -1;
+	}
+	buf->append(data + cached, size);
+
+	return size + cached;
+}
+
+#define TMP_SZ 1024
+
+bool GZIPFile::read_line(string& line) {
+
+	char delims[] = "\n\r";
+	line.clear();
+	char tmp[TMP_SZ + 1];
+	char* mt = NULL;
+
+	while (true) {
+		int l = read(tmp, 1, TMP_SZ);
+		if (l <= 0) {
+			break;
+		}
+		tmp[l] = '\0';
+
+		char *sep = strtok_safe(tmp, delims, &mt);
+		if (strlen(sep) < l)
+		{
+			line.append(sep);
+			seek(strlen(sep) + 1 - l, SEEK_CUR);
+			return true;
+		}
+		else {
+			line.append(tmp, l);
+			if (l < TMP_SZ) {
+				break;
+			}
+		}
+	}
+
+	return line.length() != 0;
+}
+
 
 ArchivedLZMAFile::ArchivedLZMAFile()
 	: FILEex(),
@@ -408,7 +705,7 @@ size_t ArchivedLZMAFile::read(void * ptr, size_t size, size_t count) {
 bool ArchivedLZMAFile::read_line(string& line) {
 
 	char delims[] = "\n\r";
-	char *sep = NULL;
+	char *sep = NULL, *mt = NULL;
 	Byte terminator = '\0';
 	line.clear();
 
@@ -426,8 +723,8 @@ bool ArchivedLZMAFile::read_line(string& line) {
 				*the_end = '\0';
 			}
 			// look for line sep
-			sep = strtok((char*)outBufferProcessed, delims);
-			if (sep != NULL)
+			sep = strtok_safe((char*)outBufferProcessed, delims, &mt);
+			if (sep != NULL) //FIXME check len instead
 			{
 				line.append(sep);
 				outBufferProcessed += line.length() + 1;

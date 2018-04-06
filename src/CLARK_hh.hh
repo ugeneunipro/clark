@@ -3109,7 +3109,7 @@ size_t CLARK<HKMERr>::TargetReader::readChunk(char *buffer) {
 		assert(false);
 		return 0;
 	}
-
+	assert(0 != target.length ? target.length >= totalBytesRead : true);
 	size_t sizeToRead = min<size_t>(MAXRSIZE, 0 != target.length ? target.length - totalBytesRead : MAXRSIZE);
 	size_t bytesRead = fread(buffer, 1, sizeToRead, fileDescriptor);
 	totalBytesRead += bytesRead;

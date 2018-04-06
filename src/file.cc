@@ -88,58 +88,40 @@ void getElementsFromLine(const std::string& line, const size_t& _maxElement, std
 
 void getElementsFromLine(const std::string& line, const vector<char>& _seps, std::vector< std::string >& _elements)
 {
-	size_t t = 0, len = line.size();
-	size_t cpt = 0;
+	size_t len = line.size();
 	_elements.resize(0);
-	while (t < len)
-	{
-		bool checkSep = true;
-		while (t < len && checkSep)
-		{
-			checkSep = false;
-			for(size_t i = 0; i < _seps.size() && !checkSep;i++)
-			{ checkSep =  line[t] == _seps[i];}
-			t += checkSep ? 1:0;
-		}
-		string v = "";
-		checkSep = true;
-		while (checkSep && t < len)
-		{
-			for(size_t i = 0 ; i < _seps.size() && checkSep; i++)
-			{
-				checkSep = checkSep && line[t] != _seps[i];
-			}
-			if (checkSep)
-			{
-				v.push_back(line[t]);
-				t++;
-			}
-		}
-		if (v != "")
-		{_elements.push_back(v);}
+	const char* delims = &_seps.front();
+	
+	char* buf = new char[len + 1];
+	line.copy(buf, len);
+	buf[len] = '\0';
+	char* t = NULL;
+
+	char* next = strtok_safe(buf, delims, &t);
+	while (next != NULL) {
+		_elements.push_back(string(next));
+		next = strtok_safe(NULL, delims, &t);
 	}
+	delete[] buf;
 	return;
 }
 
 bool getLineFromFile(FILE*& _fileStream, string& _line)
 {
+	_line.clear();
 	char *line = NULL;
 	size_t len = 0;
-	if (getline(&line, &len, _fileStream) != -1)
+	ssize_t read = getline(&line, &len, _fileStream);
+	if (read != -1)
 	{
-		string l(line);
-		if (l[l.size() -1 ] == '\n' )
-		{l.erase(l.size()-1,1);}
-		_line = l;
-		free(line);
-		line = NULL;
-		return true;
+		if (line[read - 1] == '\n' || line[read - 1] == '\r') {
+			line[read - 1] = '\0';
+		}
+		_line.append(line);
 	}
-	else
-	{
-		_line = "";
-		return false;
-	}
+	free(line);
+	 
+	return _line.size() != 0;
 }
 
 bool getFirstElementInLineFromFile(FILE*& _fileStream, string& _line)

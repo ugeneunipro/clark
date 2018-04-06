@@ -17,8 +17,9 @@ public:
 };
 
 FILEex * fopenEx(const char * filename, const char * mode);
+int fclose(FILEex *& stream);
+
 inline int fseek(FILEex *stream, long offset, int whence) { return stream->seek(offset, whence); }
-inline int fclose(FILEex *& stream) { delete stream; stream = NULL; return 0; }
 inline size_t fread(void * ptr, size_t size, size_t count, FILEex * stream) { return stream->read(ptr, size, count); }
 
 inline bool getLineFromFile(FILEex* f, std::string& line) { return f->read_line(line); }

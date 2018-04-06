@@ -3,6 +3,10 @@ cmake_minimum_required(VERSION 2.8)
 project(clark)
 
 add_subdirectory(7zC)
+if (WIN32)
+  add_subdirectory(zlib)
+  include_directories(${CMAKE_SOURCE_DIR}/zlib)
+endif (WIN32)
 
 #file(GLOB SRC_ALL src/*.cc) # compile all files with *.cc suffix
 #file(GLOB HDR *.hh) #add headers
@@ -29,9 +33,9 @@ SET_TARGET_PROPERTIES(CLARK-l PROPERTIES COMPILE_FLAGS "-DCLARK_VERSION_TYPE=1")
 add_executable(CLARK-S ${CLARK_SRC})
 SET_TARGET_PROPERTIES(CLARK-S PROPERTIES COMPILE_FLAGS "-DCLARK_VERSION_TYPE=2")
 
-target_link_libraries(getAccssnTaxID 7z)
-target_link_libraries(CLARK 7z)
-target_link_libraries(CLARK-l 7z)
-target_link_libraries(CLARK-S 7z)
+target_link_libraries(getAccssnTaxID 7z z)
+target_link_libraries(CLARK 7z z)
+target_link_libraries(CLARK-l 7z z)
+target_link_libraries(CLARK-S 7z z)
 
 #install(TARGETS CLARK CLARK-l CLARK-S DESTINATION exe)

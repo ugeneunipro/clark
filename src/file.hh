@@ -35,6 +35,16 @@
 #include<vector>
 #include "./dataType.hh"
 
+#ifdef _WINDOWS
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+ssize_t getline(char **lineptr, size_t *n, FILE *stream);
+#define strtok_safe strtok_s
+#else 
+#define strtok_safe strtok_r
+#endif 
+
+
 void getElementsFromLine(const char* line, const size_t len, const int _maxElement, std::vector< std::string >& _elements);
 
 void getElementsFromLine(const std::string& line, const std::vector<char>& _seps, std::vector< std::string >& _elements);
