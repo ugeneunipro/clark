@@ -16,22 +16,28 @@ DB=$3
 RANK=$4
 
 if [ -s "$TAXDR/nucl_gb.accession2taxid.7z" ]; then
-        CAT_ACC1="7z x -so $TAXDR/nucl_gb.accession2taxid.7z"
+        GB_STREAM="7z x -so"
+        GB_EXT=".7z"
 fi
 if [ -s "$TAXDR/nucl_gb.accession2taxid.gz" ]; then
-        CAT_ACC1="gunzip -c $TAXDR/nucl_gb.accession2taxid.gz"
+        GB_STREAM="gunzip -c"
+        GB_EXT=".gz"
 fi
 if [ -s "$TAXDR/nucl_gb.accession2taxid" ]; then
-        CAT_ACC1="cat $TAXDR/nucl_gb.accession2taxid"
+        GB_STREAM="cat"
+        GB_EXT=""
 fi
 if [ -s "$TAXDR/nucl_wgs.accession2taxid.7z" ]; then
-        CAT_ACC2="7z x -so $TAXDR/nucl_wgs.accession2taxid.7z"
+        WGS_STREAM="7z x -so"
+        WGS_EXT=".7z"
 fi
 if [ -s "$TAXDR/nucl_wgs.accession2taxid.gz" ]; then
-        CAT_ACC2="gunzip -c $TAXDR/nucl_wgs.accession2taxid.gz"
+        WGS_STREAM="gunzip -c"
+        WGS_EXT=".gz"
 fi
 if [ -s "$TAXDR/nucl_wgs.accession2taxid" ]; then
-        CAT_ACC2="cat $TAXDR/nucl_wgs.accession2taxid"
+        WGS_STREAM="cat"
+        WGS_EXT=""
 fi
 
 
@@ -55,7 +61,7 @@ rm -f "$DBDR/.tmp" "$DBDR/targets.txt" "$DBDR/.settings" "$DBDR/files_excluded.t
 
 if [ ! -s "$DBDR/.$DB.fileToAccssnTaxID" ] ; then
     echo "Re-building $DB.fileToAccssnTaxID"
-    ($CAT_ACC1; $CAT_ACC2) | $EXE/getAccssnTaxID "$DBDR/.$DB" "$TAXDR/merged.dmp" > "$DBDR/.$DB.fileToAccssnTaxID"
+    ($GB_STREAM "$TAXDR/nucl_gb.accession2taxid$GB_EXT"; $WGS_STREAM "$TAXDR/nucl_wgs.accession2taxid$WGS_EXT") | $EXE/getAccssnTaxID "$DBDR/.$DB" "$TAXDR/merged.dmp" > "$DBDR/.$DB.fileToAccssnTaxID"
 fi
 if [ ! -s "$DBDR/.$DB.fileToTaxIDs" ]; then
     echo "Retrieving taxonomy nodes for each sequence based on taxon ID..."
