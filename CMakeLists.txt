@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 2.8)
 
 project(clark)
 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_HOME_DIRECTORY}/bin)
+
 add_subdirectory(7zC)
 if (WIN32)
   add_subdirectory(zlib)
