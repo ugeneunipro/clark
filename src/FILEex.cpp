@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cstring>
 #include <iostream>
+#include <limits>
 #include <vector>
 
 #include <zlib.h>
@@ -414,7 +415,7 @@ bool GZIPFile::read_line(string& line) {
 ArchivedLZMAFile::ArchivedLZMAFile()
 	: FILEex(),
 	  res(0),
-	  entry_idx(UINT32_MAX),
+	  entry_idx(numeric_limits<uint32_t>::max()),
 	  blockIndex(0xFFFFFFFF),
 	  outBuffer(NULL),
 	  outBufferSize(0),
@@ -863,7 +864,7 @@ bool ArchivedLZMAFile::init(const char* fname, const char* entry) {
 
 	if (res == SZ_OK)
 	{
-		if (entry_idx == UINT32_MAX) {
+		if (entry_idx == numeric_limits<uint32_t>::max()) {
 			fprintf(stderr, "Bad target configuration, 7z archive entry not found: %s", entry);
 			res = SZ_ERROR_DATA;
 		}
