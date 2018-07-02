@@ -105,7 +105,7 @@ int main(int argc, char** argv)
 	cerr << "Loading nodes of taxonomy tree... " ;
 	int id, idp;
 	while (getLineFromFile(fdn, line))
-	{
+    {
 		ele.clear();
 		getElementsFromLine(line, sep, ele);
 		id = atoi(ele[0].c_str());
@@ -119,8 +119,16 @@ int main(int argc, char** argv)
 	cerr << "done." << endl;
 	vector<node> lineage;
 	cerr << "Retrieving lineage for each sequence... " ;
+
+    size_t counter = 0;
+    const size_t TARGET_STEP = 100000;
+
 	while (getLineFromFile(fdt, line))
 	{
+        if (counter % TARGET_STEP == 0) {
+            cerr << "Sequences processed: " << counter << endl;
+        }
+
 		ele.clear();
 		getElementsFromLine(line, sep, ele);
 		id = atoi(ele[2].c_str());

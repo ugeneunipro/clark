@@ -36,6 +36,7 @@ add_executable(CLARK-S ${CLARK_SRC})
 SET_TARGET_PROPERTIES(CLARK-S PROPERTIES COMPILE_FLAGS "-DCLARK_VERSION_TYPE=2")
 
 target_link_libraries(getAccssnTaxID 7z z)
+target_link_libraries(getfilesToTaxNodes 7z z)
 target_link_libraries(CLARK 7z z)
 target_link_libraries(CLARK-l 7z z)
 target_link_libraries(CLARK-S 7z z)
