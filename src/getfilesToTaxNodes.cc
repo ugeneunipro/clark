@@ -52,8 +52,9 @@ void getSGFOCP(const vector<node>& _nodes, const uint32_t& _taxid, vector<node>&
 	size_t it = _taxid, tmp;
 	while (true)
 	{
-		if (it == 1 || _nodes[it].parent == 1)
-			break;
+        if (it <= 1 || _nodes[it].parent <= 1) {
+            break;
+        }
 		if (_nodes[it].rank < NBNODE && _line[ _nodes[it].rank ].rank != 0)
 		{
 			_line[ _nodes[it].rank ].rank = 0;
@@ -118,15 +119,16 @@ int main(int argc, char** argv)
 	fclose(fdn);
 	cerr << "done." << endl;
 	vector<node> lineage;
-	cerr << "Retrieving lineage for each sequence... " ;
+    cerr << "Retrieving lineage for each sequence... " << endl;
 
     size_t counter = 0;
-    const size_t TARGET_STEP = 100000;
+    const size_t TARGET_STEP = 1000000;
 
 	while (getLineFromFile(fdt, line))
 	{
+        counter++;
         if (counter % TARGET_STEP == 0) {
-            cerr << "Sequences processed: " << counter << endl;
+            cerr << "Targets processed: " << counter << endl;
         }
 
 		ele.clear();
@@ -156,7 +158,7 @@ int main(int argc, char** argv)
 		cout << endl;
 	}
 	fclose(fdt);
-	cerr << "done." << endl;
+    cerr << "Retrieving lineage for each sequence done." << endl;
 	return 0;
 }
 

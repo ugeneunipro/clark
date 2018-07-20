@@ -162,7 +162,7 @@ int main(int argc, char** argv)
         fclose(fd);
 	}
 	fclose(meta_f);
-    cerr << "Loading accession number of all files done ("<< accToidx.size() << ")" << endl;
+    cerr << "Loading accession number of all files done ("<< accToidx.size() << "sequences in " << filesCounter << "files)" << endl;
 
 	string on_line;
 	sep.push_back(' ');
@@ -190,11 +190,11 @@ int main(int argc, char** argv)
         sepg.push_back(' ');
         sepg.push_back('\t');
 	uint32_t cpt = 0, cpt_u = 0;
-        cerr << "Retrieving taxonomy ID for each file... " ;
+        cerr << "Retrieving taxonomy ID for each file... " << std::endl;
         size_t taxidTofind = TaxIDs.size(), taxidFound = 0;
         size_t counter = 0;
 
-        const size_t LINES_STEP = 1000000;
+        const size_t LINES_STEP = 10000000;
 
 	while (getLineFromFile(accToTx, pair) && taxidFound < taxidTofind)
         {
