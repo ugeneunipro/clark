@@ -26,6 +26,7 @@
  *
  */
 
+#include <fstream>
 #include <cstdlib>
 #include <iostream>
 #include <vector>
@@ -85,9 +86,14 @@ int main(int argc, char** argv)
 	size_t offset = 0;
 	size_t length = 0;
 	string acc = "";
-	cerr << "Loading accession number of all files... " ;
+    cerr << "Loading accession number of all files... " << endl;
+
+    size_t filesCounter = 1;
+
 	while (getLineFromFile(meta_f, file))
-	{
+    {
+        cerr << filesCounter << ". \'" << file.c_str() << "\' processing... ";
+
 		FILEex * fd = fopenEx(file.c_str(), "r");
 		if (fd == NULL)
 		{
@@ -100,8 +106,9 @@ int main(int argc, char** argv)
 		length = 0;
 		bool fileContainsSequence = false;
 
+        size_t foundSequencesCount = 0;
 		while (getLineFromFile(fd, line))
-		{
+        {
 			if (line[0] != '>') {
 				length += line.size() + 1;
 				offset += line.size() + 1;
@@ -142,16 +149,20 @@ int main(int argc, char** argv)
 			offset += line.size() + 1;
 			length = line.size() + 1;
 			fileContainsSequence = true;
+            foundSequencesCount++;
 		}
+
+        cerr << " Sequences found: " << foundSequencesCount << endl;
+        filesCounter++;
 
 		if (fileContainsSequence && !seqs.empty()) {
 			seqs.back().length = offset - seqs.back().offset;
 		}
 
-		fclose(fd);
+        fclose(fd);
 	}
 	fclose(meta_f);
-	cerr << "done ("<< accToidx.size() << ")" << endl;
+    cerr << "Loading accession number of all files done ("<< accToidx.size() << "sequences in " << filesCounter << "files)" << endl;
 
 	string on_line;
 	sep.push_back(' ');
@@ -159,7 +170,7 @@ int main(int argc, char** argv)
 	std::map<int, int> 		oldTonew;
 	std::map<int, int>::iterator	it_on;
 
-	std::cerr << "Loading merged Tax ID... " ;
+    std::cerr << "Loading merged Tax ID... " << endl;
 	while (getLineFromFile(oldTx,on_line))
 	{
 		ele.clear();
@@ -171,7 +182,7 @@ int main(int argc, char** argv)
 		}
 	}	
 	fclose(oldTx);
-	std::cerr << "done" << std::endl;
+    std::cerr << "Loading merged Tax ID done" << std::endl;
 
 	string pair;
 	int taxID, new_taxID;
@@ -179,10 +190,19 @@ int main(int argc, char** argv)
         sepg.push_back(' ');
         sepg.push_back('\t');
 	uint32_t cpt = 0, cpt_u = 0;
-        cerr << "Retrieving taxonomy ID for each file... " ;
+        cerr << "Retrieving taxonomy ID for each file... " << std::endl;
         size_t taxidTofind = TaxIDs.size(), taxidFound = 0;
+        size_t counter = 0;
+
+        const size_t LINES_STEP = 10000000;
+
 	while (getLineFromFile(accToTx, pair) && taxidFound < taxidTofind)
         {
+        counter++;
+        if (counter % LINES_STEP == 0) {
+            cerr << "Tax IDs processed: " << counter << endl;
+        }
+
                 ele.clear();
                 getElementsFromLine(pair, sepg, ele);
                 acc = ele[0];
@@ -198,13 +218,16 @@ int main(int argc, char** argv)
 			TaxIDs[it->second] = new_taxID;
 		}
         }
+        
+        ofstream rejected(strcat(argv[1], "_rejected"));
 	for(size_t t = 0; t < seqs.size(); t++)
 	{
 		cout << seqs[t].Name << ":" << seqs[t].offset << ";" << seqs[t].length << "\t" ;
 		it = accToidx.find(seqs[t].Accss);
 		cout << seqs[t].Accss << "\t" << TaxIDs[it->second] << endl;
-		if (TaxIDs[it->second]  == -1)
-		{	cpt_u++; }
+		if (TaxIDs[it->second]  == -1) {
+			rejected << seqs[t].Name << ":" << seqs[t].offset << ";" << seqs[t].length << "\t" << seqs[t].Accss << endl;
+			cpt_u++; }
 		else
 		{	cpt++;	 }
 	}
