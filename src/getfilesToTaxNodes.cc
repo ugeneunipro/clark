@@ -70,6 +70,7 @@ int main(int argc, char** argv)
 {
 	if (argc != 3)
 	{
+        cerr << "UGENE-customized " << argv[0] << endl;
 		cerr << "Usage: " << argv[0] << " <./nodes.dmp> <./file_taxid>"<< endl;
 		exit(-1);
 	}

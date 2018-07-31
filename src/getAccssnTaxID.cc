@@ -52,6 +52,7 @@ int main(int argc, char** argv)
 {
 	if (argc != 3)
 	{
+        cerr << "UGENE-customized " << argv[0] << endl;
 		cerr << "Usage: cat nucl_accession2taxid | "<< argv[0] << " <./file of filenames> <./merged.dmp>"<< endl;
 		exit(-1);
 	}

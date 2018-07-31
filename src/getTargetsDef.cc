@@ -39,6 +39,7 @@ int main(int argc, char** argv)
 {
 	if (argc < 2)
 	{
+        cerr << "UGENE-customized " << argv[0] << endl;
 		cerr << "Usage: " << argv[0] << " <FilestoTaxIDs>, option: <Rank: 0,1,2,3,4,5>, 0 for species, 1 for genus, ..., 5 for phylum. Default is species." << endl; 
 		exit(1);
 	}
