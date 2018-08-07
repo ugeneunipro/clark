@@ -163,7 +163,7 @@ int main(int argc, char** argv)
         fclose(fd);
 	}
 	fclose(meta_f);
-    cerr << "Loading accession number of all files done ("<< accToidx.size() << "sequences in " << filesCounter << "files)" << endl;
+    cerr << "Loading accession number of all files done ("<< accToidx.size() << " sequences in " << filesCounter << " files)" << endl;
 
 	string on_line;
 	sep.push_back(' ');
