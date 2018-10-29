@@ -89,10 +89,11 @@ int main(int argc, char** argv)
 	string acc = "";
     cerr << "Loading accession number of all files... " << endl;
 
-    size_t filesCounter = 1;
+    size_t filesCounter = 0;
 
 	while (getLineFromFile(meta_f, file))
     {
+        filesCounter++;
         cerr << filesCounter << ". \'" << file.c_str() << "\' processing... ";
 
 		FILEex * fd = fopenEx(file.c_str(), "r");
@@ -154,7 +155,6 @@ int main(int argc, char** argv)
 		}
 
         cerr << " Sequences found: " << foundSequencesCount << endl;
-        filesCounter++;
 
 		if (fileContainsSequence && !seqs.empty()) {
 			seqs.back().length = offset - seqs.back().offset;
