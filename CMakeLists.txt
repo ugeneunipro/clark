@@ -13,6 +13,7 @@ endif (WIN32)
 #file(GLOB SRC_ALL src/*.cc) # compile all files with *.cc suffix
 #file(GLOB HDR *.hh) #add headers
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
+set (CMAKE_CXX_STANDARD 11)
 
 include_directories(${CMAKE_SOURCE_DIR}/src)
 
