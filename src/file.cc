@@ -26,84 +26,67 @@
  *
  */
 
+#include <algorithm>
 #include <cstdlib>
 #include <string>
 #include <vector>
 #include <string.h>
 #include <fstream>
+#include <limits>
 
 using namespace std;
 
 #include "./file.hh"
 
-void getElementsFromLine(const char* line, const size_t len, const int _maxElement, std::vector< std::string >& _elements)
-{
-	size_t t = 0; 
-	size_t cpt = 0;
-	_elements.resize(0);
-	while (t < len && cpt < _maxElement)
-	{
-		while ( t < len  && (line[t] == ' ' || line[t] == '\t' || line[t] == '\n' || line[t] == '\r'))
-		{       t++;
-		}
-		string v = "";
-		while ( t < len && line[t] != ' '  && line[t] != '\t' && line[t] != '\n' && line[t] != '\r')
-		{
-			v.push_back(line[t]);
-			t++;
-		}
-		if (v != "")
-		{
-			_elements.push_back(v);
-			cpt++;
-		}
-	}
-	return;
+bool isSeparator(const vector<char> &seps, const char sep) {
+	return find(seps.begin(), seps.end(), sep) != seps.end();
 }
 
-void getElementsFromLine(const std::string& line, const size_t& _maxElement, std::vector< std::string >& _elements)
-{
-	size_t t = 0, len = line.size();
-	size_t cpt = 0;
-	_elements.resize(0);
-	while (t < len && cpt < _maxElement)
-	{
-		while (t <  len && (line[t] == ' ' || line[t] == ',' || line[t] == '\n' || line[t] == '\t' || line[t] == '\r'))
-		{       t++;
-		}
-		string v = "";
-		while (t <  len && line[t] != ' '  && line[t] != ',' && line[t] != '\n' && line[t] != '\t' && line[t] != '\r')
-		{
-			v.push_back(line[t]);
-			t++;
-		}
-		if (v != "")
-		{	
-			_elements.push_back(v);
-			cpt++;
+void getElementsFromLine(const string& line, size_t len, size_t _maxElement, const vector<char>& _seps, vector<string>& _elements) {
+	size_t t = 0;
+	bool inQuotes = false;
+	_elements.clear();
+	string thisWord;
+
+	if (len < 0) {
+		len = line.length();
+	}
+
+	while (t < len && _elements.size() < _maxElement) {
+		if (isSeparator(_seps, line[t])) {
+			if (inQuotes) {
+				thisWord.push_back(line[t++]);
+			} else {
+				if (!thisWord.empty()) {
+					_elements.push_back(thisWord);
+					thisWord.clear();
+				}
+				while (isSeparator(_seps, line[++t]) && t < len && _elements.size() < _maxElement);
+			}
+		} else if (line[t] == '\"') {
+			inQuotes = !inQuotes;
+			++t;
+		} else {
+			thisWord.push_back(line[t++]);
 		}
 	}
-	return;
+
+	if (!thisWord.empty() && _elements.size() < _maxElement) {
+		_elements.push_back(thisWord);
+		thisWord.clear();
+	}
 }
 
-void getElementsFromLine(const std::string& line, const vector<char>& _seps, std::vector< std::string >& _elements)
-{
-	size_t len = line.size();
-	_elements.resize(0);
-	const char* delims = &_seps.front();
-	
-	char* buf = new char[len + 1];
-	line.copy(buf, len);
-	buf[len] = '\0';
-	char* t = NULL;
+void getElementsFromLine(const string& line, size_t len, size_t _maxElement, vector< string >& _elements) {
+	getElementsFromLine(line, len, _maxElement, { ' ', '\t', '\n', '\r' }, _elements);
+}
 
-	char* next = strtok_safe(buf, delims, &t);
-	while (next != NULL) {
-		_elements.push_back(string(next));
-		next = strtok_safe(NULL, delims, &t);
-	}
-	delete[] buf;
-	return;
+void getElementsFromLine(const string& line, size_t _maxElement, vector< string >& _elements) {
+	getElementsFromLine(line, line.length(), _maxElement, vector<char>({ ' ', ',', '\t', '\n', '\r' }), _elements);
+}
+
+void getElementsFromLine(const string& line, const vector<char>& _seps, vector< string >& _elements) {
+	getElementsFromLine(line, line.length(), -1, _seps, _elements);
 }
 
 bool getLineFromFile(FILE*& _fileStream, string& _line)
@@ -164,7 +147,7 @@ bool getFirstAndSecondElementInLine(FILE*& _fileStream, uint64_t& _kIndex, ITYPE
 	return false;
 }
 
-bool getFirstAndSecondElementInLine(FILE*& _fileStream, std::string& _line, ITYPE& _freq)
+bool getFirstAndSecondElementInLine(FILE*& _fileStream, string& _line, ITYPE& _freq)
 {
 	char *line = NULL;
 	size_t len = 0;
@@ -270,23 +253,23 @@ bool validFile(const char* _file)
 }
 
 void splitTargetPath(const string& targetPath, string& _filePath, size_t& _offset, size_t& _length) {
-    _filePath = targetPath;
-    _offset = 0;
-    _length = 0;
+	_filePath = targetPath;
+	_offset = 0;
+	_length = 0;
 
-    size_t separatorIndex = targetPath.find_last_of(':');
-    if (string::npos == separatorIndex) {
-        return;
-    }
+	size_t separatorIndex = targetPath.find_last_of(':');
+	if (string::npos == separatorIndex) {
+		return;
+	}
 
     _filePath = targetPath.substr(0, separatorIndex);
-    string positionData = targetPath.substr(separatorIndex + 1);
+	string positionData = targetPath.substr(separatorIndex + 1);
 
-    separatorIndex = positionData.find_last_of(';');
-    if (string::npos == separatorIndex) {
-        return;
-    }
+	separatorIndex = positionData.find_last_of(';');
+	if (string::npos == separatorIndex) {
+		return;
+	}
 
-    _offset = atoi(positionData.substr(0, separatorIndex).c_str());
-    _length = atoi(positionData.substr(separatorIndex + 1).c_str());
+	_offset = atoi(positionData.substr(0, separatorIndex).c_str());
+	_length = atoi(positionData.substr(separatorIndex + 1).c_str());
 }

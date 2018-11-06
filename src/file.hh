@@ -45,11 +45,11 @@ ssize_t getline(char **lineptr, size_t *n, FILE *stream);
 #endif 
 
 
-void getElementsFromLine(const char* line, const size_t len, const int _maxElement, std::vector< std::string >& _elements);
+void getElementsFromLine(const std::string& line, size_t len, size_t _maxElement, std::vector< std::string >& _elements);
 
 void getElementsFromLine(const std::string& line, const std::vector<char>& _seps, std::vector< std::string >& _elements);
 
-void getElementsFromLine(const std::string& line, const size_t& _maxElement, std::vector< std::string >& _elements);
+void getElementsFromLine(const std::string& line, size_t _maxElement, std::vector< std::string >& _elements);
 
 bool getLineFromFile(FILE*& _fileStream, std::string& _line);
 
