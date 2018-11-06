@@ -63,10 +63,10 @@ void getElementsFromLine(const string& line, size_t len, size_t _maxElement, con
 				}
 				while (isSeparator(_seps, line[++t]) && t < len && _elements.size() < _maxElement);
 			}
-		} else if (line[t] == '\"') {
-			inQuotes = !inQuotes;
-			++t;
 		} else {
+			if (line[t] == '\"') {
+				inQuotes = !inQuotes;
+			}
 			thisWord.push_back(line[t++]);
 		}
 	}
@@ -252,6 +252,13 @@ bool validFile(const char* _file)
         return true;
 }
 
+string getUnquotedString(const string &str) {
+	if (2 <= str.length() && str[0] == '\"' && str[str.length() - 1] == '\"') {
+		return str.substr(1, str.length() - 2);
+	}
+	return str;
+}
+
 void splitTargetPath(const string& targetPath, string& _filePath, size_t& _offset, size_t& _length) {
 	_filePath = targetPath;
 	_offset = 0;
@@ -262,7 +269,7 @@ void splitTargetPath(const string& targetPath, string& _filePath, size_t& _offse
 		return;
 	}
 
-    _filePath = targetPath.substr(0, separatorIndex);
+	_filePath = getUnquotedString(targetPath.substr(0, separatorIndex));
 	string positionData = targetPath.substr(separatorIndex + 1);
 
 	separatorIndex = positionData.find_last_of(';');
