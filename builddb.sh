@@ -61,7 +61,7 @@ rm -f "$DBDR/.tmp" "$DBDR/targets.txt" "$DBDR/.settings" "$DBDR/files_excluded.t
 
 if [ ! -s "$DBDR/.$DB.fileToAccssnTaxID" ] ; then
     echo "Re-building $DB.fileToAccssnTaxID"
-    ($GB_STREAM "$TAXDR/nucl_gb.accession2taxid$GB_EXT"; $WGS_STREAM "$TAXDR/nucl_wgs.accession2taxid$WGS_EXT") | $EXE/getAccssnTaxID "$DBDR/.$DB" "$TAXDR/merged.dmp" > "$DBDR/.$DB.fileToAccssnTaxID"
+    ($GB_STREAM "$TAXDR/nucl_gb.accession2taxid$GB_EXT"; $WGS_STREAM "$TAXDR/nucl_wgs.accession2taxid$WGS_EXT") | "$EXE/getAccssnTaxID" "$DBDR/.$DB" "$TAXDR/merged.dmp" > "$DBDR/.$DB.fileToAccssnTaxID"
 fi
 if [ ! -s "$DBDR/.$DB.fileToTaxIDs" ]; then
     echo "Retrieving taxonomy nodes for each sequence based on taxon ID..."
