@@ -181,7 +181,7 @@ int main(int argc, char** argv)
 		{
 			oldTonew[atoi(ele[0].c_str())] = atoi(ele[1].c_str());
 		}
-	}	
+	}
 	fclose(oldTx);
     std::cerr << "Loading merged Tax ID done" << std::endl;
 
@@ -223,11 +223,11 @@ int main(int argc, char** argv)
         ofstream rejected(strcat(argv[1], "_rejected"));
 	for(size_t t = 0; t < seqs.size(); t++)
 	{
-		cout << seqs[t].Name << ":" << seqs[t].offset << ";" << seqs[t].length << "\t" ;
+		cout << "\"" << seqs[t].Name << "\"" << ":" << seqs[t].offset << ";" << seqs[t].length << "\t" ;
 		it = accToidx.find(seqs[t].Accss);
 		cout << seqs[t].Accss << "\t" << TaxIDs[it->second] << endl;
 		if (TaxIDs[it->second]  == -1) {
-			rejected << seqs[t].Name << ":" << seqs[t].offset << ";" << seqs[t].length << "\t" << seqs[t].Accss << endl;
+			rejected << "\"" << seqs[t].Name << "\"" << ":" << seqs[t].offset << ";" << seqs[t].length << "\t" << seqs[t].Accss << endl;
 			cpt_u++; }
 		else
 		{	cpt++;	 }

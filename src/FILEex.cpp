@@ -161,7 +161,7 @@ void getFirstAndSecondElementInLine(const string &line, string &_line, ITYPE &_f
 	// Take first element and put it into _line
 	// Take second element and put it into _freq
 	vector<string> ele;
-	getElementsFromLine(line.c_str(), len, 2, ele);
+	getElementsFromLine(line, len, 2, ele);
 	_line = ele[0];
 	_freq = atoi(ele[1].c_str());
 }
