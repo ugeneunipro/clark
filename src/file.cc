@@ -78,11 +78,22 @@ void getElementsFromLine(const string& line, size_t len, size_t _maxElement, con
 }
 
 void getElementsFromLine(const string& line, size_t len, size_t _maxElement, vector< string >& _elements) {
-	getElementsFromLine(line, len, _maxElement, { ' ', '\t', '\n', '\r' }, _elements);
+	vector<char> seps;
+	seps.push_back(' ');
+	seps.push_back('\t');
+	seps.push_back('\n');
+	seps.push_back('\r');
+	getElementsFromLine(line, len, _maxElement, seps, _elements);
 }
 
 void getElementsFromLine(const string& line, size_t _maxElement, vector< string >& _elements) {
-	getElementsFromLine(line, line.length(), _maxElement, vector<char>({ ' ', ',', '\t', '\n', '\r' }), _elements);
+	vector<char> seps;
+	seps.push_back(' ');
+	seps.push_back(',');
+	seps.push_back('\t');
+	seps.push_back('\n');
+	seps.push_back('\r');
+	getElementsFromLine(line, line.length(), _maxElement, seps, _elements);
 }
 
 void getElementsFromLine(const string& line, const vector<char>& _seps, vector< string >& _elements) {
