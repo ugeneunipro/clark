@@ -394,6 +394,9 @@ bool GZIPFile::read_line(string& line) {
 		tmp[l] = '\0';
 
 		char *sep = strtok_safe(tmp, delims, &mt);
+		if (NULL == sep) {
+			continue;
+		}
 		if (strlen(sep) < l)
 		{
 			line.append(sep);
