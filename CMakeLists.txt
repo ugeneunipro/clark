@@ -5,14 +5,12 @@ project(clark)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_HOME_DIRECTORY}/bin)
 
 add_subdirectory(7zC)
-if (WIN32)
-  add_subdirectory(zlib)
-  include_directories(${CMAKE_SOURCE_DIR}/zlib)
-endif (WIN32)
+add_subdirectory(zlib)
+include_directories(${CMAKE_SOURCE_DIR}/zlib)
 
 #file(GLOB SRC_ALL src/*.cc) # compile all files with *.cc suffix
 #file(GLOB HDR *.hh) #add headers
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -static-libgcc -static-libstdc++")
 
 include_directories(${CMAKE_SOURCE_DIR}/src)
 
